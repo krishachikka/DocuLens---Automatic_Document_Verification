@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Signup from './pages/Signup';
 import DocumentUpload from './pages/DocumentUpload';  // Import DocumentUpload component
 
+
 function App() {
   return (
     <>
@@ -14,6 +15,7 @@ function App() {
           <Route path="/signin" element={<Signin />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/upload" element={<DocumentUpload />} />  {/* Add the DocumentUpload route */}
+       
         </Routes>
       </BrowserRouter>
     </>
