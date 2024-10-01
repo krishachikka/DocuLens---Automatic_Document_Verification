@@ -17,8 +17,6 @@ const UserForm = () => {
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [userDetails, setUserDetails] = useState({});
-  
-  // Aadhar upload state
   const [selectedFile, setSelectedFile] = useState(null);
   const [progress, setProgress] = useState(0);
   const [extractedText, setExtractedText] = useState('');
@@ -43,22 +41,15 @@ const UserForm = () => {
       return;
     }
 
-    // Split the full name into parts
-    const nameParts = formData.fullName.split(' ');
-    const [name, fatherName, surname] = nameParts.length >= 3 
-      ? [nameParts[0], nameParts[1], nameParts.slice(2).join(' ')]
-      : [nameParts[0], '', nameParts.slice(1).join(' ')];
-
     // Store form data in localStorage
-    localStorage.setItem('userInfo', JSON.stringify({ name, fatherName, surname, dob: formData.dob, gender: formData.gender }));
+    localStorage.setItem('userInfo', JSON.stringify(formData));
 
     // Show submission message
     setIsSubmitted(true);
-    setUserDetails({ name, fatherName, surname });
-
-    // Retrieve and log the stored data from localStorage
-    const storedData = JSON.parse(localStorage.getItem('userInfo'));
-    console.log('Stored Form Data:', storedData); // Display the stored form data in the console
+    setUserDetails(formData);
+    
+    // Trigger file upload
+    handleUpload();
   };
 
   const handleFileChange = (event) => {
@@ -89,7 +80,7 @@ const UserForm = () => {
       async () => {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
         toast.success('File uploaded successfully!');
-
+        
         // Call the text extraction function
         await handleExtractText(downloadURL);
       }
@@ -97,18 +88,13 @@ const UserForm = () => {
   };
 
   const handleExtractText = async (imageUrl) => {
-    if (!selectedFile) {
-      toast.error('Please upload an image for extraction.');
-      return;
-    }
-
     setLoading(true);
     setError('');
 
     try {
-      const formData = new FormData();
-      formData.append('image', selectedFile);
-      const response = await axios.post('http://localhost:3000/extract-text', formData, {
+      const formDataImage = new FormData();
+      formDataImage.append('image', selectedFile);
+      const response = await axios.post('http://localhost:3000/extract-text', formDataImage, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
@@ -116,10 +102,24 @@ const UserForm = () => {
       const formattedText = formatExtractedText(currentText);
       setExtractedText(formattedText);
 
-      // Store extracted info in local storage
-      localStorage.setItem('extractedInfo', JSON.stringify(formattedText));
+      // Directly store extracted information in local storage
+      const { name, gender, dob } = parseExtractedText(formattedText);
+      localStorage.setItem('extractedInfo', JSON.stringify({ name, gender, dob }));
 
-      // Show the extracted information for a moment before redirecting
+      // Prepare data for the backend
+      const userDetails = {
+        fullName: formData.fullName,
+        dob: formData.dob,
+        gender: formData.gender,
+        imageUrl, // The URL of the uploaded image
+        extractedInfo: { name, gender, dob },
+      };
+
+      // Send user details to the backend
+      await axios.post('http://localhost:3000/api/details', userDetails);
+      toast.success('User details saved successfully!');
+
+      // Redirect after a moment
       setTimeout(() => {
         navigate('/camera-capture');
       }, 3000); // Redirect after 3 seconds
@@ -131,7 +131,7 @@ const UserForm = () => {
     }
   };
 
-  const formatExtractedText = (text) => {
+  const parseExtractedText = (text) => {
     const nameMatch = text.match(/(Yash Chetan Chavan|Anjali Ajaykumar Gupta)/); // Example names
     const genderMatch = text.match(/(Male|Female|Other)/i); // Capture gender
     const dobMatch = text.match(/(\d{2}\/\d{2}\/\d{4})/); // Capture DOB in DD/MM/YYYY format
@@ -140,6 +140,11 @@ const UserForm = () => {
     const gender = genderMatch ? genderMatch[0] : 'Not found';
     const dob = dobMatch ? dobMatch[0] : 'Not found';
 
+    return { name, gender, dob };
+  };
+
+  const formatExtractedText = (text) => {
+    const { name, gender, dob } = parseExtractedText(text);
     return `Name: ${name}\nGender: ${gender}\nDOB: ${dob}`;
   };
 
@@ -148,7 +153,6 @@ const UserForm = () => {
       <div className="bg-white/40 backdrop-blur-xl p-8 rounded-3xl shadow-lg w-full max-w-md">
         <h2 className="text-2xl font-semibold text-center mb-6">User Information Form</h2>
         <form onSubmit={handleSubmit}>
-          {/* Full Name Input */}
           <div className="mb-4">
             <input
               type="text"
@@ -161,7 +165,6 @@ const UserForm = () => {
             />
           </div>
 
-          {/* Date of Birth Input */}
           <div className="mb-4">
             <input
               type="date"
@@ -173,7 +176,6 @@ const UserForm = () => {
             />
           </div>
 
-          {/* Gender Selection */}
           <div className="mb-4">
             <select
               name="gender"
@@ -189,7 +191,6 @@ const UserForm = () => {
             </select>
           </div>
 
-          {/* Aadhar Card Upload */}
           <div className="mb-4">
             <label
               htmlFor="fileInput"
@@ -220,25 +221,21 @@ const UserForm = () => {
             )}
           </div>
 
-          {/* Submit Button */}
           <button 
             type="submit" 
             className="w-full bg-[#22223B] text-white font-bold p-3 rounded-3xl shadow hover:bg-[#C9ADA7] hover:text-black transition duration-300"
-            onClick={handleUpload} // Trigger upload on submit
           >
             Submit
           </button>
         </form>
 
-        {/* Show success message if submitted */}
         {isSubmitted && (
           <div className="mt-4 text-center">
             <p className="text-green-900 font-bold">Form submitted successfully!</p>
-            <p className="mt-2 font-semibold">Full Name: {userDetails.name} {userDetails.fatherName} {userDetails.surname}</p>
+            <p className="mt-2 font-semibold">Full Name: {userDetails.fullName}</p>
           </div>
         )}
 
-        {/* Display Extracted Information */}
         {extractedText && (
           <div className="mt-4 text-left">
             <h3 className="font-semibold">Extracted Information:</h3>
@@ -246,10 +243,8 @@ const UserForm = () => {
           </div>
         )}
 
-        {/* Error Message */}
         {error && <p className="mt-4 text-red-600">{error}</p>}
 
-        {/* Loading State */}
         {loading && <p className="mt-4 text-blue-600">Extracting text...</p>}
       </div>
       <ToastContainer />

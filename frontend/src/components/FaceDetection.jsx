@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import * as faceapi from 'face-api.js';
 import '../styles/FaceDetection.css';
 
@@ -19,6 +20,8 @@ const FaceDetection = () => {
     const [warningMessage, setWarningMessage] = useState(null);
     const [detectedFaceDescriptor, setDetectedFaceDescriptor] = useState(null);
     const [showDocumentUpload, setShowDocumentUpload] = useState(false);
+    
+    const navigate = useNavigate(); // Initialize useNavigate
 
     const loadModels = async () => {
         const MODEL_URL = '/models';
@@ -317,7 +320,7 @@ const FaceDetection = () => {
                         <h3 className="text-lg font-bold">Upload Further Documents</h3>
                         <button
                             className="mt-2 px-4 py-2 bg-[#4A4E69] text-white rounded hover:bg-[#22223B] rounded-3xl"
-                            onClick={() => alert('Upload Documents')}
+                            onClick={() => navigate('/documents')} // Navigate to /documents
                         >
                             Upload Documents
                         </button>

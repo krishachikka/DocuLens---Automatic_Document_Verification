@@ -6,6 +6,7 @@ const multer = require('multer'); // For file uploads
 const { exec } = require('child_process');
 const path = require('path');
 const userRoutes = require('./routes/user.route')
+const detailsRoutes = require('./routes/detailsRoutes')
 
 dotenv.config({ path: '.env.local' });
 
@@ -20,6 +21,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/api',userRoutes )
+app.use('/api', detailsRoutes);
 
 // Set up multer to store uploaded images
 const storage = multer.diskStorage({
