@@ -1,12 +1,9 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Signin from './pages/Signin'
-import Home from './pages/Home'
-import Signup from './pages/Signup'
-import FaceDetection from './components/FaceDetection'
-
-
-
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Signin from './pages/Signin';
+import Home from './pages/Home';
+import Signup from './pages/Signup';
+import DocumentUpload from './pages/DocumentUpload';  // Import DocumentUpload component
 
 function App() {
   return (
@@ -14,13 +11,14 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path='/signin' element={<Signin />} />
-          <Route path='/signup' element={<Signup />} />
+          <Route path="/signin" element={<Signin />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/upload" element={<DocumentUpload />} />  {/* Add the DocumentUpload route */}
           <Route path='/face-detection' element={<FaceDetection />} />
         </Routes>
       </BrowserRouter>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
