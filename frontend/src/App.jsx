@@ -4,6 +4,7 @@ import Signin from './pages/Signin';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
 import DocumentUpload from './pages/DocumentUpload';  // Import DocumentUpload component
+import CameraCapture from './components/FaceDetection';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/signin" element={<Signin />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/camera-capture" element={<CameraCapture />} />
           <Route path="/upload" element={<DocumentUpload />} />  {/* Add the DocumentUpload route */}
           {/* <Route path='/face-detection' element={<FaceDetection />} /> */}
         </Routes>
