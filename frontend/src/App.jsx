@@ -8,6 +8,7 @@ import CameraCapture from './components/FaceDetection'; // Import CameraCapture 
 import Navbar from './components/Navbar'; // Import Navbar component
 import UserForm from './pages/UserForm'; // Import UserForm component
 // import ImageVerification from './pages/ImageVerification'; // Import ImageVerification component
+import OCRComponent from './components/OCRComponent';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />  {/* Signup route */}
           <Route path="/camera-capture" element={<CameraCapture />} />  {/* Camera capture route */}
           <Route path="/upload" element={<DocumentUpload />} />  {/* Document upload route */}
+          <Route path="/text-extract" element={<OCRComponent   />} />  {/* Add the DocumentUpload route */}
           <Route path="/user-form" element={<UserForm />} />  {/* UserForm route */}
           {/* <Route path="/image-verification" element={<ImageVerification />} />  ImageVerification route */}
         </Routes>
