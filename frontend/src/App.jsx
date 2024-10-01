@@ -7,6 +7,7 @@ import Signup from './pages/Signup';
 import DocumentUpload from './pages/DocumentUpload';  // Import DocumentUpload component
 import CameraCapture from './components/FaceDetection';
 import Navbar from './components/Navbar';
+import OCRComponent from './components/OCRComponent';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/camera-capture" element={<CameraCapture />} />
           <Route path="/upload" element={<DocumentUpload />} />  {/* Add the DocumentUpload route */}
+          <Route path="/text-extract" element={<OCRComponent   />} />  {/* Add the DocumentUpload route */}
           {/* <Route path="/about" element={<About />} /> */}
         </Routes>
       </BrowserRouter>
