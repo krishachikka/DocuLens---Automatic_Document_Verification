@@ -16,8 +16,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/camera-capture" element={<CameraCapture />} />
           <Route path="/upload" element={<DocumentUpload />} />  {/* Add the DocumentUpload route */}
-
-
+          {/* <Route path='/face-detection' element={<FaceDetection />} /> */}
         </Routes>
       </BrowserRouter>
     </>
