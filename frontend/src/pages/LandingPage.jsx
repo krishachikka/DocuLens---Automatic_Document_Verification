@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar';
 function LandingPage() {
   return (
     <div className="min-h-screen bg-gray-100">
-        <Navbar />
+        {/* <Navbar /> */}
       {/* Hero Section */}
       <header className="bg-[#22223B] text-white py-20">
         <div className="container mx-auto text-center">
