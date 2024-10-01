@@ -8,6 +8,7 @@ const DocumentUpload = () => {
   const [progress, setProgress] = useState(0);
   const [fileURL, setFileURL] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [extractedData, setExtractedData] = useState({ name: '', dob: '', gender: '' });
 
   // Fetch uploaded files from your backend (if you store them in MongoDB)
   const fetchUploadedFiles = async () => {
@@ -42,26 +43,48 @@ const DocumentUpload = () => {
     uploadTask.on(
       "state_changed",
       (snapshot) => {
-        // Progress function
         const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
         setProgress(progress);
       },
       (error) => {
-        // Handle unsuccessful uploads
         console.error("Upload failed:", error);
       },
       () => {
-        // Handle successful uploads
         getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
           setFileURL(downloadURL);
           alert("File uploaded successfully!");
 
-          // Optionally, you can save the file URL to your backend (MongoDB)
+          // Optionally, save the file URL to your backend (MongoDB)
           await axios.post('http://localhost:5000/api/files', { url: downloadURL }, { withCredentials: true });
           fetchUploadedFiles(); // Refresh the list of uploaded files
+
+          // Call the function to extract data after upload
+          extractData(downloadURL); // Pass the downloadURL to your extraction function
         });
       }
     );
+  };
+
+  // Function to extract data from the uploaded file (mocking extraction for demonstration)
+  const extractData = async (fileURL) => {
+    // Mocking the OCR process by simulating a fetch request
+    try {
+      const response = await axios.get(fileURL); // Replace with actual OCR logic or API call
+      const textContent = response.data.text; // Assuming the API returns a similar JSON structure
+
+      // Use regex to extract data
+      const nameMatch = textContent.match(/(Yash Chetan Chavan)/);
+      const dobMatch = textContent.match(/DOB\s*:\s*(\d{2}\/\d{2}\/\d{4})/);
+      const genderMatch = textContent.match(/Male/);
+
+      const name = nameMatch ? nameMatch[0] : 'Not Found';
+      const dob = dobMatch ? dobMatch[1] : 'Not Found';
+      const gender = genderMatch ? genderMatch[0] : 'Not Found';
+
+      setExtractedData({ name, dob, gender });
+    } catch (error) {
+      console.error("Error extracting data:", error);
+    }
   };
 
   return (
@@ -80,7 +103,15 @@ const DocumentUpload = () => {
         </div>
       )}
 
-      
+      {extractedData.name && (
+        <div>
+          <h2>Extracted Data</h2>
+          <p><strong>Name:</strong> {extractedData.name}</p>
+          <p><strong>DOB:</strong> {extractedData.dob}</p>
+          <p><strong>Gender:</strong> {extractedData.gender}</p>
+        </div>
+      )}
+
       <ul>
         {uploadedFiles.map((uploadedFile, index) => (
           <li key={index}>

@@ -1,3 +1,4 @@
+// backend/index.js
 const express = require('express');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
@@ -5,6 +6,7 @@ const cors = require('cors');
 const multer = require('multer'); // For file uploads
 const { exec } = require('child_process');
 const path = require('path');
+const userRoutes = require('./routes/user.route')
 
 dotenv.config({ path: '.env.local' });
 
@@ -18,6 +20,8 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+app.use('/api', userRoutes)
+;
 
 // Set up multer to store uploaded images
 const storage = multer.diskStorage({
@@ -67,3 +71,6 @@ mongoose.connect(process.env.MONGO_URL)
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+
+
