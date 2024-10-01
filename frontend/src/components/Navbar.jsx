@@ -18,7 +18,7 @@ function Navbar() {
                 </div>
 
                 {/* Links */}
-                <ul className="flex space-x-6">
+                <ul className="flex justify-around w-[80%] ">
                     <li>
                         <Link to="/" className="hover:text-gray-400">Home</Link>
                     </li>

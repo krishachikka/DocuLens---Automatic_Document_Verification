@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
-import '../styles/FaceDetection.css'
+import '../styles/FaceDetection.css';
 
 const FaceDetection = () => {
     const videoRef = useRef(null);
@@ -11,17 +11,21 @@ const FaceDetection = () => {
     const [uploadedImage, setUploadedImage] = useState(null);
     const [currentDetection, setCurrentDetection] = useState(null);
     const [comparisonResult, setComparisonResult] = useState(null);
-    const [showAnimation, setShowAnimation] = useState(false); // Track animation state
-    const [modelsLoaded, setModelsLoaded] = useState(false); // Track if models are loaded
-
+    const [showAnimation, setShowAnimation] = useState(false);
+    const [showProgressBar, setShowProgressBar] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [modelsLoaded, setModelsLoaded] = useState(false);
+    const [isVideoStarted, setIsVideoStarted] = useState(false);
+    const [warningMessage, setWarningMessage] = useState(null);
+    
     const loadModels = async () => {
-        const MODEL_URL = '/models'; // Adjust this path based on your project structure
+        const MODEL_URL = '/models';
         await Promise.all([
             faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
             faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
             faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
-        setModelsLoaded(true); // Set to true when models are loaded
+        setModelsLoaded(true);
     };
 
     const startVideo = async () => {
@@ -31,7 +35,8 @@ const FaceDetection = () => {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
                 videoRef.current.srcObject = stream;
                 videoRef.current.play();
-                videoRef.current.onloadedmetadata = handleVideoPlay; // Wait for video metadata
+                videoRef.current.onloadedmetadata = handleVideoPlay;
+                setIsVideoStarted(true);
             } catch (err) {
                 console.error(err);
                 setMessage("Unable to access the camera.");
@@ -45,36 +50,41 @@ const FaceDetection = () => {
             return;
         }
 
+        const video = videoRef.current;
         const canvas = canvasRef.current;
 
-        // Wait for the video dimensions to be ready
-        const displaySize = { width: videoRef.current.videoWidth, height: videoRef.current.videoHeight };
+        const displaySize = { width: video.videoWidth, height: video.videoHeight };
+        canvas.width = displaySize.width;
+        canvas.height = displaySize.height;
 
-        if (displaySize.width > 0 && displaySize.height > 0) {
-            faceapi.matchDimensions(canvas, displaySize);
+        faceapi.matchDimensions(canvas, displaySize);
 
-            setInterval(async () => {
-                if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended) {
-                    const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
-                        .withFaceLandmarks()
-                        .withFaceDescriptors();
+        setInterval(async () => {
+            if (video && !video.paused && !video.ended) {
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceDescriptors();
 
-                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-                    faceapi.draw.drawDetections(canvas, resizedDetections);
-                    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                faceapi.draw.drawDetections(canvas, resizedDetections);
+                faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
-                    if (detections.length === 1 && detections[0].detection.score > 0.5) {
-                        setMessage("One clear face detected!");
-                        setCurrentDetection(detections[0]);
-                    } else {
-                        setMessage("No clear face detected. Please adjust your position.");
-                    }
+                if (detections.length === 1 && detections[0].detection.score > 0.5) {
+                    setMessage("One clear face detected!");
+                    setCurrentDetection(detections[0]);
+                    setWarningMessage(null);
+                } else if (detections.length > 1) {
+                    setMessage("Multiple faces detected!");
+                    setWarningMessage("Only one person is allowed for the photograph. Please ensure only one person is in the frame.");
+                    setCurrentDetection(null);
+                } else {
+                    setMessage("No clear face detected. Please adjust your position.");
+                    setWarningMessage(null);
                 }
-            }, 100);
-        } else {
-            setMessage("Video dimensions are not ready. Please try again.");
-        }
+            }
+        }, 100);
     };
 
     const captureDetectedFace = () => {
@@ -90,6 +100,10 @@ const FaceDetection = () => {
 
         const faceImageURL = faceCanvas.toDataURL();
         setDetectedFaceImage(faceImageURL);
+
+        videoRef.current.pause();
+        videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+        setIsVideoStarted(false);
     };
 
     const handleImageUpload = (event) => {
@@ -103,111 +117,163 @@ const FaceDetection = () => {
         }
     };
 
+    const handleDrop = (event) => {
+        event.preventDefault();
+        const file = event.dataTransfer.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setUploadedImage(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleDragOver = (event) => {
+        event.preventDefault();
+    };
+
     const compareFaces = async () => {
         if (!detectedFaceImage || !uploadedImage) return;
 
-        // Trigger the merging animation
-        setShowAnimation(true);
+        setShowProgressBar(true);
+        setProgress(0);
 
-        // Delay to simulate the merging effect, then show the result
-        setTimeout(() => {
-            setShowAnimation(false);
-            setComparisonResult("The images are not the same."); // Display the comparison result
-        }, 3000); // Duration of the animation (3 seconds)
+        // Simulate progress
+        const interval = setInterval(() => {
+            setProgress((prev) => {
+                if (prev >= 100) {
+                    clearInterval(interval);
+                    setShowProgressBar(false);
+                    setComparisonResult("The images are not the same."); // Replace with your comparison logic
+                    return 100;
+                }
+                return prev + 20; // Increment progress
+            });
+        }, 500); // Adjust the duration to simulate progress
     };
 
     useEffect(() => {
         loadModels();
     }, []);
 
+    const triggerFileInput = () => {
+        document.getElementById('fileInput').click();
+    };
+
     return (
         <div className="flex flex-col items-center">
-            {!detectedFaceImage && (
-                <button
-                    onClick={startVideo}
-                    className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-                >
-                    Start Face Detection
-                </button>
-            )}
-            <div className="relative">
+            <div className="relative rounded-3xl  overflow-hidden m-2" style={{ width: '100%', maxWidth: '720px', height: 'auto' }}>
+                {!isVideoStarted && !detectedFaceImage && (
+                    <button
+                        onClick={startVideo}
+                        className="absolute inset-0 m-auto px-4 py-2 bg-[#4A4E69] text-white rounded-3xl hover:bg-[#22223B] transition z-50"
+                        style={{ width: 'fit-content', height: 'fit-content' }}
+                    >
+                        Start Face Detection
+                    </button>
+                )}
                 {!detectedFaceImage && (
                     <video
                         ref={videoRef}
-                        width="720"
-                        height="560"
+                        className="block w-full rounded-3xl"
+                        style={{ height: 'auto' }}
                         autoPlay
                         muted
-                        className="block"
                     />
                 )}
-                <canvas
-                    ref={canvasRef}
-                    width="720"
-                    height="560"
-                    className="absolute top-0 left-0"
-                />
-                <canvas
-                    ref={faceCanvasRef}
-                    style={{ display: 'none' }}
-                />
-                <div className="absolute bottom-0 left-0 w-full bg-black bg-opacity-50 p-2 text-white text-center">
-                    <h1>{message}</h1>
-                </div>
+                {!detectedFaceImage && (
+                    <canvas
+                        ref={canvasRef}
+                        className="absolute top-0 left-0"
+                        style={{ width: '100%', height: 'auto' }}
+                    />
+                )}
+                <canvas ref={faceCanvasRef} style={{ display: 'none' }} />
+                {!detectedFaceImage && (
+                    <div className="absolute bottom-0 left-0 w-full bg-black bg-opacity-50 p-2 text-white text-center">
+                        <h1>{message}</h1>
+                        {warningMessage && <p className="text-red-500">{warningMessage}</p>}
+                    </div>
+                )}
             </div>
             {currentDetection && !detectedFaceImage && (
                 <button
                     onClick={captureDetectedFace}
-                    className="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition"
+                    className="mt-4 px-4 py-2 bg-[#C9ADA7] text-black rounded hover:bg-[#9A8C98] transition"
                 >
                     Capture Face
                 </button>
             )}
-            {detectedFaceImage && (
-                <div className="mt-4">
-                    <img
-                        src={detectedFaceImage}
-                        alt="Detected face"
-                        className="border border-gray-300"
-                        style={{ width: '200px', height: 'auto' }}
-                    />
+
+            <section className='flex flex-row'>
+                {detectedFaceImage && (
+                    <div className="mt-4">
+                        <img
+                            src={detectedFaceImage}
+                            alt="Detected face"
+                            className="border border-gray-300"
+                            style={{ width: '200px', height: 'auto' }}
+                        />
+                    </div>
+                )}
+
+                {detectedFaceImage && (
+                    <div className="mt-4">
+                        <div
+                            className="border-2 border-dashed border-[#4A4E69] p-2 rounded-lg cursor-pointer w-[200px] flex justify-center mx-3 bg-slate-300 text-center"
+                            onDrop={handleDrop}
+                            onDragOver={handleDragOver}
+                            onClick={triggerFileInput}
+                        >
+                            <div className='text-[#4A4E69]'>
+                                {uploadedImage ? 'Image Uploaded!' : 'Drag & Drop or Click to Upload'}
+                                <div className='mx-auto text-[#4A4E69] text-5xl'><ion-icon name="cloud-upload"></ion-icon></div>
+                            </div>
+                            <input
+                                id="fileInput"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                className="hidden" // Hide input
+                            />
+                        </div>
+                    </div>
+                )}
+                {uploadedImage && (
+                    <div className="mt-4 z-50">
+                        <img
+                            src={uploadedImage}
+                            alt="Uploaded"
+                            className="border border-gray-300"
+                            style={{ width: '200px', height: 'auto' }}
+                        />
+                        <button
+                            onClick={compareFaces}
+                            className="mt-2 px-4 py-2 bg-[#4A4E69] text-white rounded hover:bg-[#22223B]"
+                        >
+                            Compare Faces
+                        </button>
+                    </div>
+                )}
+            </section>
+            
+            {showProgressBar && (
+                <div className="mt-4 w-full">
+                    <div className="bg-gray-200 rounded-full">
+                        <div
+                            className="bg-[#4A4E69] text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full"
+                            style={{ width: `${progress}%` }}
+                        >
+                            {progress}%
+                        </div>
+                    </div>
                 </div>
             )}
-            {uploadedImage && (
-                <div className="mt-4">
-                    <img
-                        src={uploadedImage}
-                        alt="Uploaded"
-                        className="border border-gray-300"
-                        style={{ width: '200px', height: 'auto' }}
-                    />
-                    <button
-                        onClick={compareFaces}
-                        className="mt-2 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition"
-                    >
-                        Compare Faces
-                    </button>
-                </div>
-            )}
-            {detectedFaceImage && (
-                <div className="mt-4">
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="px-4 py-2 border border-gray-300 rounded"
-                    />
-                </div>
-            )}
-            {showAnimation && (
-                <div className="merging-animation">
-                    <img src={detectedFaceImage} alt="Detected" className="animated-image" />
-                    <img src={uploadedImage} alt="Uploaded" className="animated-image" />
-                </div>
-            )}
+
             {comparisonResult && (
-                <div className="mt-4">
-                    <h2 className="text-lg font-semibold">{comparisonResult}</h2>
+                <div className="mt-4 text-lg">
+                    {comparisonResult}
                 </div>
             )}
         </div>
