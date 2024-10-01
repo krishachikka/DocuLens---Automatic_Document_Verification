@@ -31,10 +31,10 @@ function Signin() {
             const response = await axios.post('http://localhost:3000/api/signin', formData);
 
             if (response.status === 200) {
-                const { token, username } = response.data; // Destructure the response
+                const { token, username } = response.data;
                 localStorage.setItem('token', token);
                 if (username) {
-                    localStorage.setItem('username', username); // Store username if it exists
+                    localStorage.setItem('username', username);
                 }
                 navigate('/');
             }
