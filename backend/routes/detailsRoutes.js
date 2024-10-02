@@ -1,5 +1,6 @@
+// routes/detailsRoutes.js
 const express = require('express');
-const { createDetails, getDetails, getAllApplicants, getDetailsByFullName, validateDetailsByFullName } = require('../controllers/detailsController');
+const { createDetails, getDetails, getAllApplicants, approveApplicant, rejectApplicant } = require('../controllers/detailsController');
 
 const router = express.Router();
 
@@ -8,11 +9,9 @@ router.get('/details', getDetails); // Get all details
 
 // Route to get all applicants
 router.get('/applicants', getAllApplicants);
+// In your detailsRoutes.js
+router.patch('/details/:id/approve', approveApplicant);
+router.patch('/details/:id/reject', rejectApplicant);
 
-// Route to get details by fullName
-router.get('/details/fullname/:fullName', getDetailsByFullName); // Add this line
-
-// Route to validate details by fullName
-router.put('/details/validate', validateDetailsByFullName); // Add this line
 
 module.exports = router;

@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../../Firebase.js'; // Import the storage from firebase.js
+import { storage } from '../../Firebase.js';
 import { ToastContainer, toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import 'react-toastify/dist/ReactToastify.css';
 
 const UserForm = () => {
-  const navigate = useNavigate(); // Initialize useNavigate
-
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullName: '',
     dob: '',
@@ -22,7 +21,7 @@ const UserForm = () => {
   const [extractedText, setExtractedText] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isValid, setIsValid] = useState(false); // State to track validity
+  const [isValid, setIsValid] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -32,7 +31,6 @@ const UserForm = () => {
     });
   };
 
-  // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -42,21 +40,20 @@ const UserForm = () => {
       return;
     }
 
-    // Store form data in localStorage
     localStorage.setItem('userInfo', JSON.stringify(formData));
-
-    // Show submission message
     setIsSubmitted(true);
     setUserDetails(formData);
-    
-    // Trigger file upload
     handleUpload();
   };
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    setSelectedFile(file);
-    setError('');
+    if (file && (file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'application/pdf')) {
+      setSelectedFile(file);
+      setError('');
+    } else {
+      setError('Invalid file type. Please upload a JPG, PNG, or PDF file.');
+    }
   };
 
   const handleUpload = () => {
@@ -81,8 +78,6 @@ const UserForm = () => {
       async () => {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
         toast.success('File uploaded successfully!');
-
-        // Call the text extraction function
         await handleExtractText(downloadURL);
       }
     );
@@ -103,27 +98,23 @@ const UserForm = () => {
       const formattedText = formatExtractedText(currentText);
       setExtractedText(formattedText);
 
-      // Directly store extracted information in local storage
       const { name, gender, dob } = parseExtractedText(formattedText);
       localStorage.setItem('extractedInfo', JSON.stringify({ name, gender, dob }));
 
-      // Prepare data for the backend
       const userDetails = {
         fullName: formData.fullName,
         dob: formData.dob,
         gender: formData.gender,
-        imageUrl, // The URL of the uploaded image
+        imageUrl,
         extractedInfo: { name, gender, dob },
       };
 
-      // Send user details to the backend
       await axios.post('http://localhost:3000/api/details', userDetails);
       toast.success('User details saved successfully!');
 
-      // Redirect after a moment
       setTimeout(() => {
         navigate('/camera-capture');
-      }, 3000); // Redirect after 3 seconds
+      }, 3000);
     } catch (err) {
       console.error('Error extracting text:', err);
       setError('Error extracting text. Please try again.');
@@ -133,9 +124,9 @@ const UserForm = () => {
   };
 
   const parseExtractedText = (text) => {
-    const nameMatch = text.match(/(Yash Chetan Chavan|Anjali Ajaykumar Gupta)/); // Example names
-    const genderMatch = text.match(/(Male|Female|Other)/i); // Capture gender
-    const dobMatch = text.match(/(\d{2}\/\d{2}\/\d{4})/); // Capture DOB in DD/MM/YYYY format
+    const nameMatch = text.match(/(Yash Chetan Chavan|Anjali Ajaykumar Gupta)/);
+    const genderMatch = text.match(/(Male|Female|Other)/i);
+    const dobMatch = text.match(/(\d{2}\/\d{2}\/\d{4})/);
 
     const name = nameMatch ? nameMatch[0] : 'Not found';
     const gender = genderMatch ? genderMatch[0] : 'Not found';
@@ -149,11 +140,10 @@ const UserForm = () => {
     return `Name: ${name}\nGender: ${gender}\nDOB: ${dob}`;
   };
 
-  // Function to toggle validity
   const toggleValidity = async () => {
     try {
       const response = await axios.patch(`http://localhost:3000/api/details/${userDetails._id}/validity`);
-      setIsValid(response.data.data.isValid); // Update local state
+      setIsValid(response.data.data.isValid);
       toast.success('Validity status updated successfully!');
     } catch (error) {
       console.error('Error updating validity:', error);
@@ -214,7 +204,7 @@ const UserForm = () => {
                 onChange={handleFileChange}
                 className="hidden"
                 id="fileInput"
-                accept=".jpg,.jpeg,.png,.pdf" // Accept image and PDF files
+                accept=".jpg,.jpeg,.png,.pdf"
                 required
               />
               <p className="text-center text-[#4A4E69] mt-2">
@@ -263,7 +253,6 @@ const UserForm = () => {
         )}
 
         {error && <p className="mt-4 text-red-600">{error}</p>}
-
         {loading && <p className="mt-4 text-blue-600">Extracting text...</p>}
       </div>
       <ToastContainer />

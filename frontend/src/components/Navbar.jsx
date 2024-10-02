@@ -57,7 +57,7 @@ function Navbar() {
                     {/* Conditionally render the Upload button if the user is logged in */}
                     {isLoggedIn && (
                         <li>
-                            <Link to="/upload" className="hover:text-gray-400">Upload</Link>
+                            <Link to="/notifications" className="hover:text-gray-400"><ion-icon name="notifications" ></ion-icon> My Notifications</Link>
                         </li>
                     )}
                 </ul>
