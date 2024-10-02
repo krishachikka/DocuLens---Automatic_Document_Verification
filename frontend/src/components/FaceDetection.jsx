@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import * as faceapi from 'face-api.js';
 import '../styles/FaceDetection.css';
 
@@ -20,8 +20,9 @@ const FaceDetection = () => {
     const [warningMessage, setWarningMessage] = useState(null);
     const [detectedFaceDescriptor, setDetectedFaceDescriptor] = useState(null);
     const [showDocumentUpload, setShowDocumentUpload] = useState(false);
-    
-    const navigate = useNavigate(); // Initialize useNavigate
+    const [videoStream, setVideoStream] = useState(null); // Store the video stream
+
+    const navigate = useNavigate();
 
     const loadModels = async () => {
         const MODEL_URL = '/models';
@@ -38,6 +39,7 @@ const FaceDetection = () => {
         if (permissionGranted) {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+                setVideoStream(stream); // Save the stream to state
                 videoRef.current.srcObject = stream;
                 videoRef.current.play();
                 videoRef.current.onloadedmetadata = handleVideoPlay;
@@ -146,7 +148,7 @@ const FaceDetection = () => {
             .withFaceDescriptors();
         
         if (detections.length > 0) {
-            return detections[0].descriptor; // Return the descriptor of the first detected face
+            return detections[0].descriptor;
         }
         return null;
     };
@@ -161,41 +163,53 @@ const FaceDetection = () => {
 
         if (uploadedFaceDescriptor) {
             const distance = faceapi.euclideanDistance(detectedFaceDescriptor, uploadedFaceDescriptor);
-            const threshold = 0.6; // Set a threshold for comparison
+            const threshold = 0.6;
 
             setTimeout(() => {
                 setShowProgressBar(false);
                 if (distance < threshold) {
                     setComparisonResult("The faces match!");
-                    setShowDocumentUpload(true); // Show document upload buttons if matched
+                    setShowDocumentUpload(true);
                 } else {
                     setComparisonResult("The faces do not match.");
-                    setShowDocumentUpload(false); // Hide if not matched
+                    setShowDocumentUpload(false);
                 }
-            }, 1000); // Simulate progress duration
+            }, 1000);
         } else {
             setShowProgressBar(false);
             setComparisonResult("No face detected in the uploaded image.");
         }
 
-        // Simulate progress bar
         const interval = setInterval(() => {
             setProgress((prev) => {
                 if (prev >= 100) {
                     clearInterval(interval);
                     return 100;
                 }
-                return prev + 20; // Increment progress
+                return prev + 20;
             });
-        }, 500); // Adjust the duration to simulate progress
+        }, 500);
     };
 
     useEffect(() => {
         loadModels();
-    }, []);
+        return () => {
+            // Cleanup video stream when the component unmounts
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, [videoStream]);
 
     const triggerFileInput = () => {
         document.getElementById('fileInput').click();
+    };
+
+    const handleNavigate = () => {
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop()); // Stop the video stream before navigating
+        }
+        navigate('/documents');
     };
 
     return (
@@ -319,8 +333,8 @@ const FaceDetection = () => {
                     <div className="mt-4 m-4">
                         <h3 className="text-lg font-bold">Upload Further Documents</h3>
                         <button
-                            className="mt-2 px-4 py-2 bg-[#4A4E69] text-white rounded hover:bg-[#22223B] rounded-3xl"
-                            onClick={() => navigate('/documents')} // Navigate to /documents
+                            className="mt-2 px-4 py-2 bg-[#4A4E69] text-white rounded-3xl hover:bg-[#22223B] rounded-3xl"
+                            onClick={handleNavigate} // Use handleNavigate to stop the stream and navigate
                         >
                             Upload Documents
                         </button>
