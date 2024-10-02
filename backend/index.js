@@ -1,3 +1,4 @@
+// backend/index.js
 const express = require('express');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
@@ -36,6 +37,9 @@ const storage = multer.diskStorage({
     }
 });
 const upload = multer({ storage });
+const uploadRoutes = require('./routes/upload');
+
+
 
 // Ensure 'uploads' directory exists, create it if it doesn't
 const fs = require('fs');
@@ -65,6 +69,9 @@ app.post('/extract-text', upload.single('image'), (req, res) => {
     });
 });
 
+app.use('/api/upload', uploadRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // MongoDB connection (optional)
 mongoose.connect(process.env.MONGO_URL)
     .then(() => console.log("MongoDB connected successfully"))
@@ -74,3 +81,6 @@ mongoose.connect(process.env.MONGO_URL)
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+
+

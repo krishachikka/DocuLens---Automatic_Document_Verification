@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from '../../Firebase.js'; 
 import { ToastContainer, toast } from 'react-toastify'; 
@@ -8,11 +8,9 @@ import '../styles/UploadDoc.css';
 import { useNavigate } from 'react-router-dom';
 
 // Checkbox Component
-const Checkbox = ({ checked, onChange }) => {
-  return (
-    <input type="checkbox" checked={checked} onChange={onChange} />
-  );
-};
+const Checkbox = ({ checked, onChange }) => (
+  <input type="checkbox" checked={checked} onChange={onChange} />
+);
 
 // Main Document Upload Component
 const DocumentsComponent = () => {
@@ -24,21 +22,8 @@ const DocumentsComponent = () => {
     ewsCertificate: null,
     experienceLetter: null,
   });
-  const [uploadedDocs, setUploadedDocs] = useState({
-    gateScorecard: false,
-    casteCertificate: false,
-    pwdCertificate: false,
-    ewsCertificate: false,
-    experienceLetter: false,
-  });
-  const [progress, setProgress] = useState(0);
-  const [validity, setValidity] = useState({
-    gateScorecard: true,
-    casteCertificate: true,
-    pwdCertificate: true,
-    ewsCertificate: true,
-    experienceLetter: true,
-  });
+  const [uploadedDocs, setUploadedDocs] = useState({});
+  const [validity, setValidity] = useState({});
   const [submissionStatus, setSubmissionStatus] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isOpen, setIsOpen] = useState({});
@@ -53,27 +38,27 @@ const DocumentsComponent = () => {
     return storedInfo ? JSON.parse(storedInfo) : {};
   };
 
-  const handleFileChange = (event, docType) => {
+  const handleFileChange = async (event, docType) => {
     const file = event.target.files[0];
     if (file) {
       if (!documents[docType]) {
         setDocuments((prev) => ({ ...prev, [docType]: file }));
-        handleUpload(file, docType);
+        await handleUpload(file, docType);
       } else {
         toast.info(`You have already uploaded a ${docType.replace(/([A-Z])/g, ' $1')}.`);
       }
     }
   };
 
-  const handleUpload = (fileToUpload, docType) => {
+  const handleUpload = async (fileToUpload, docType) => {
     const storageRef = ref(storage, `uploads/${docType}/${fileToUpload.name}`);
     const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
 
     uploadTask.on(
       'state_changed',
       (snapshot) => {
-        const simulatedProgress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        setProgress(simulatedProgress);
+        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        // Handle progress if needed
       },
       (error) => {
         console.error('Upload failed:', error);
@@ -85,9 +70,7 @@ const DocumentsComponent = () => {
 
         setUploadedDocs((prev) => ({ ...prev, [docType]: true }));
         setDocuments((prev) => ({ ...prev, [docType]: { file: fileToUpload, url: downloadURL } }));
-        setProgress(0);
-        setIsSubmitted(true);
-
+        
         handleExtractText(docType, fileToUpload);
       }
     );
@@ -113,24 +96,13 @@ const DocumentsComponent = () => {
       const nameMatch = extractedInfo.text.toLowerCase().match(/(?:Name|Mi)\s*[,|]*\s*([A-Za-z\s]+)/);
       const extractedName = nameMatch ? nameMatch[1].trim().toLowerCase() : '';
 
-      // Compare extracted name with local storage name
       const isValid = fullName === extractedName;
       setValidity((prev) => ({ ...prev, [docType]: isValid }));
 
-      if (['pwdCertificate', 'ewsCertificate', 'experienceLetter'].includes(docType)) {
-        setExtractedData((prev) => ({ ...prev, [docType]: extractedInfo.text }));
-      }
-
-      // Check filename for underscore
-      if (file.name.includes('_')) {
-        toast.error(`${docType.replace(/([A-Z])/g, ' $1')} verification failed! Please upload again.`);
-        setValidity((prev) => ({ ...prev, [docType]: false }));
+      if (isValid) {
+        toast.success(`${docType.replace(/([A-Z])/g, ' $1')} name verified successfully!`);
       } else {
-        if (isValid) {
-          toast.success(`${docType.replace(/([A-Z])/g, ' $1')} name verified successfully!`);
-        } else {
-          toast.error(`Name verification failed for ${docType.replace(/([A-Z])/g, ' $1')}.`);
-        }
+        toast.error(`Name verification failed for ${docType.replace(/([A-Z])/g, ' $1')}.`);
       }
     } catch (err) {
       console.error('Error extracting text:', err);
@@ -146,7 +118,7 @@ const DocumentsComponent = () => {
       setDocuments((prev) => ({ ...prev, [docType]: null }));
       setUploadedDocs((prev) => ({ ...prev, [docType]: false }));
       setValidity((prev) => ({ ...prev, [docType]: true }));
-      setExtractedData((prev) => ({ ...prev, [docType]: null })); // Reset extracted data
+      setExtractedData((prev) => ({ ...prev, [docType]: null }));
     } catch (error) {
       console.error('Remove failed:', error);
       toast.error('Remove failed');
@@ -154,19 +126,11 @@ const DocumentsComponent = () => {
   };
 
   const handleSubmit = () => {
-    const localStorageData = loadLocalStorageData();
-    const fullName = localStorageData.name;
-
-    const documentsData = {
-      gateScorecard: documents.gateScorecard?.url || null,
-      casteCertificate: documents.casteCertificate?.url || null,
-      pwdCertificate: documents.pwdCertificate?.url || null,
-      ewsCertificate: documents.ewsCertificate?.url || null,
-      experienceLetter: documents.experienceLetter?.url || null,
-    };
+    const documentsData = Object.fromEntries(
+      Object.entries(documents).map(([key, value]) => [key, value?.url || null])
+    );
 
     console.log("Submitting Documents:", documentsData);
-    console.log("Submitted by:", fullName);
 
     const newSubmissionStatus = {};
     Object.keys(uploadedDocs).forEach(docType => {
@@ -174,22 +138,19 @@ const DocumentsComponent = () => {
     });
 
     setSubmissionStatus(newSubmissionStatus);
+    setIsSubmitted(true);
     toast.success('Documents submitted temporarily for review!');
   };
 
-  const [finalNotification, setFinalNotification] = useState('');
-
   const handleFinalSubmit = () => {
-      setFinalNotification('All documents submitted. Please wait for approval.');
-      localStorage.setItem('finalNotification', 'All documents submitted. Please wait for approval.');
-      navigate('/notifications'); // Navigate to the notifications page
+    toast.success('All documents submitted. Please wait for approval.');
+    navigate('/notifications');
   };
-  
 
   const renderDocumentUpload = (docType, label) => {
     const document = documents[docType];
-    const bgColorClass = uploadedDocs[docType] ? 'bg-green-100' : 'bg-slate-100'; // Change background color based on upload status
-  
+    const bgColorClass = uploadedDocs[docType] ? 'bg-green-100' : 'bg-slate-100';
+
     return (
       <div className={`mb-4 m-10 justify-center align-middle items-center ${bgColorClass} p-4 rounded-3xl`}>
         <div 
@@ -198,7 +159,7 @@ const DocumentsComponent = () => {
           <h2 className="text-lg font-semibold">{label}</h2>
           <span className='text-2xl'>{isOpen[docType] ? '-' : '+'}</span>
         </div>
-  
+
         {isOpen[docType] && (
           <div className="pl-4 pt-2">
             <label className="flex-grow">
@@ -245,10 +206,6 @@ const DocumentsComponent = () => {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold text-center">Document Upload</h1>
-      <div className='mb-4 m-10 flex justify-between items-center cursor-pointer border-b bg-green-100 p-4 rounded-3xl'>
-        <h2 className="text-lg font-semibold">Aadhar Card</h2>
-        <ion-icon name="checkmark-circle" size="large"></ion-icon>
-      </div>
       {renderDocumentUpload('gateScorecard', 'GATE Scorecard')}
       {renderDocumentUpload('casteCertificate', 'Caste Certificate')}
       {renderDocumentUpload('pwdCertificate', 'PWD Certificate')}
@@ -268,7 +225,7 @@ const DocumentsComponent = () => {
             ))}
           </ul>
           <button 
-            onClick={handleFinalSubmit} // Correctly call the function here
+            onClick={handleFinalSubmit}
             className="bg-[#C9ADA7] text-white p-2 rounded-3xl mt-4 w-full">
             Final Submit
           </button>
