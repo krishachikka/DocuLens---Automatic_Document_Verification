@@ -1,4 +1,3 @@
-// models/Details.js
 const mongoose = require('mongoose');
 
 const detailsSchema = new mongoose.Schema({
@@ -10,7 +9,8 @@ const detailsSchema = new mongoose.Schema({
     name: { type: String, required: true },
     gender: { type: String, required: true },
     dob: { type: Date, required: true }
-  }
+  },
+  isValid: { type: Boolean, default: false } // New field for validity
 });
 
 const Details = mongoose.model('Details', detailsSchema);

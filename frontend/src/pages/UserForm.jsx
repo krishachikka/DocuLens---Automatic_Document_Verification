@@ -22,6 +22,7 @@ const UserForm = () => {
   const [extractedText, setExtractedText] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isValid, setIsValid] = useState(false); // State to track validity
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -80,7 +81,7 @@ const UserForm = () => {
       async () => {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
         toast.success('File uploaded successfully!');
-        
+
         // Call the text extraction function
         await handleExtractText(downloadURL);
       }
@@ -146,6 +147,18 @@ const UserForm = () => {
   const formatExtractedText = (text) => {
     const { name, gender, dob } = parseExtractedText(text);
     return `Name: ${name}\nGender: ${gender}\nDOB: ${dob}`;
+  };
+
+  // Function to toggle validity
+  const toggleValidity = async () => {
+    try {
+      const response = await axios.patch(`http://localhost:3000/api/details/${userDetails._id}/validity`);
+      setIsValid(response.data.data.isValid); // Update local state
+      toast.success('Validity status updated successfully!');
+    } catch (error) {
+      console.error('Error updating validity:', error);
+      toast.error('Failed to update validity status');
+    }
   };
 
   return (
@@ -233,6 +246,12 @@ const UserForm = () => {
           <div className="mt-4 text-center">
             <p className="text-green-900 font-bold">Form submitted successfully!</p>
             <p className="mt-2 font-semibold">Full Name: {userDetails.fullName}</p>
+            <button 
+              onClick={toggleValidity} 
+              className={`mt-4 p-2 rounded ${isValid ? 'bg-red-500' : 'bg-green-500'} text-white`}
+            >
+              {isValid ? 'Invalidate' : 'Validate'}
+            </button>
           </div>
         )}
 
