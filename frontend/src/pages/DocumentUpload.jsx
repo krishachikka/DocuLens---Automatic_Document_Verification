@@ -1,175 +1,277 @@
 import React, { useState, useEffect } from 'react';
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { storage } from '../../Firebase.js'; // Import the storage from firebase.js
-import axios from 'axios'; // Import axios for API calls
-import { ToastContainer, toast } from 'react-toastify'; // For notifications
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { storage } from '../../Firebase.js'; 
+import { ToastContainer, toast } from 'react-toastify'; 
+import axios from 'axios'; 
 import 'react-toastify/dist/ReactToastify.css';
 
-const DocumentUpload = () => {
-  const [file, setFile] = useState(null);
+const DocumentsComponent = () => {
+  const [documents, setDocuments] = useState({
+    gateScorecard: null,
+    casteCertificate: null,
+    pwdCertificate: null,
+    ewsCertificate: null,
+    experienceLetter: null,
+  });
+  const [uploadedDocs, setUploadedDocs] = useState({
+    gateScorecard: false,
+    casteCertificate: false,
+    pwdCertificate: false,
+    ewsCertificate: false,
+    experienceLetter: false,
+  });
   const [progress, setProgress] = useState(0);
-  const [fileURL, setFileURL] = useState('');
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [isDragging, setIsDragging] = useState(false); // State for drag-and-drop
+  const [dobData, setDobData] = useState({});
+  const [isOpen, setIsOpen] = useState({
+    gateScorecard: false,
+    casteCertificate: false,
+    pwdCertificate: false,
+    ewsCertificate: false,
+    experienceLetter: false,
+  });
+  const [validity, setValidity] = useState({
+    gateScorecard: true,
+    casteCertificate: true,
+    pwdCertificate: true,
+    ewsCertificate: true,
+    experienceLetter: true,
+  });
 
-  // Fetch uploaded files from your backend
-  const fetchUploadedFiles = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/files', { withCredentials: true });
-      setUploadedFiles(response.data); // Assuming response.data is an array of file URLs
-    } catch (error) {
-      console.error("Error fetching uploaded files:", error);
-    }
+  // Load the extracted info from local storage
+  const loadLocalStorageData = () => {
+    const storedInfo = localStorage.getItem('extractedInfo');
+    return storedInfo ? JSON.parse(storedInfo) : {};
   };
 
   useEffect(() => {
-    fetchUploadedFiles(); // Fetch files when component mounts
+    const localStorageData = loadLocalStorageData();
+    setDobData((prev) => ({
+      ...prev,
+      gateScorecard: localStorageData.dob,
+      casteCertificate: localStorageData.dob,
+      pwdCertificate: localStorageData.dob,
+      ewsCertificate: localStorageData.dob,
+      experienceLetter: localStorageData.dob,
+    }));
   }, []);
 
-  // Handle file change
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    setFile(selectedFile);
-    if (selectedFile) handleUpload(selectedFile); // Automatically upload after file selection
+  const handleFileChange = (event, docType) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (!documents[docType]) {
+        setDocuments((prev) => ({ ...prev, [docType]: file }));
+        handleUpload(file, docType);
+      } else {
+        toast.info(`You have already uploaded a ${docType.replace(/([A-Z])/g, ' $1')}.`);
+      }
+    }
   };
 
-  // Handle file upload
-  const handleUpload = (fileToUpload) => {
-    if (!fileToUpload) {
-      toast.error("Please choose a file first!");
-      return;
-    }
-
-    const storageRef = ref(storage, `uploads/${fileToUpload.name}`);
+  const handleUpload = (fileToUpload, docType) => {
+    const storageRef = ref(storage, `uploads/${docType}/${fileToUpload.name}`);
     const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
 
     uploadTask.on(
-      "state_changed",
+      'state_changed',
       (snapshot) => {
-        // Progress function
         const simulatedProgress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        
-        // Simulate delay in progress for smoother animation
-        setTimeout(() => {
-          setProgress(simulatedProgress);
-        }, 100);  // 100ms delay for smoother progress visualization
+        setProgress(simulatedProgress);
       },
       (error) => {
-        // Handle unsuccessful uploads
-        console.error("Upload failed:", error);
-        toast.error("Upload failed");
+        console.error('Upload failed:', error);
+        toast.error('Upload failed');
       },
-      () => {
-        // Handle successful uploads
-        getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-          setFileURL(downloadURL);
-          toast.success("File uploaded successfully!");
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        toast.success(`${docType.replace(/([A-Z])/g, ' $1')} uploaded successfully!`);
 
-          // Optionally, save the file URL to your backend (MongoDB)
-          await axios.post('http://localhost:5000/api/files', { url: downloadURL }, { withCredentials: true });
-          fetchUploadedFiles(); // Refresh the list of uploaded files
-        });
+        setUploadedDocs((prev) => ({ ...prev, [docType]: true }));
+        setDocuments((prev) => ({ ...prev, [docType]: { file: fileToUpload, url: downloadURL } }));
+        setProgress(0);
+
+        // Call to extract text after upload
+        handleExtractText(docType, fileToUpload);
       }
     );
   };
 
-  // Drag and drop handlers
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation(); // Prevent the default behavior
-    setIsDragging(true);
-  };
+  const handleExtractText = async (docType, file) => {
+    if (!file) {
+      toast.error('Please upload a file for extraction.');
+      return;
+    }
 
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation(); // Prevent the default behavior
-    setIsDragging(false);
-  };
+    const formData = new FormData();
+    formData.append('image', file);
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation(); // Prevent the default behavior
-    setIsDragging(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      setFile(droppedFile);
-      handleUpload(droppedFile); // Automatically upload after dropping
+    try {
+      const response = await axios.post('http://localhost:3000/extract-text', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const extractedInfo = response.data;
+      const dob = extractDOB(extractedInfo.text);
+      const localStorageData = loadLocalStorageData();
+      const storedDob = localStorageData.dob;
+
+      // Check if the extracted DOB matches the stored one
+      const isValid = storedDob === dob;
+
+      setValidity((prev) => ({ ...prev, [docType]: isValid })); // Set validity for this document
+
+      // Update validity in local storage
+      if (isValid) {
+        const updatedInfo = { ...localStorageData, [docType]: { isValid: true, dob } };
+        localStorage.setItem('extractedInfo', JSON.stringify(updatedInfo));
+      }
+
+    } catch (err) {
+      console.error('Error extracting text:', err);
+      toast.error('Error extracting text. Please try again.');
     }
   };
 
-  const clearAll = () => {
-    setFile(null);
-    setFileURL('');
-    setProgress(0);
-    document.getElementById('fileInput').value = ''; // Clear the file input
+  const extractDOB = (text) => {
+    const dobMatch = text.match(/(?:Date of Birth|DOB|DOB:|Date of birth|Date of Birth:)\s*(\d{2})[\/-](\d{2})[\/-](\d{4})|(\d{4})[\/-](\d{2})[\/-](\d{2})|(\d{1,2})[\/-](\d{1,2})[\/-](\d{2})/i);
+
+    if (dobMatch) {
+      if (dobMatch[1] && dobMatch[2] && dobMatch[3]) {
+        return `${dobMatch[1]}/${dobMatch[2]}/${dobMatch[3]}`; // dd/mm/yyyy
+      } else if (dobMatch[4] && dobMatch[5] && dobMatch[6]) {
+        return `${dobMatch[5]}/${dobMatch[6]}/${dobMatch[4]}`; // yyyy/mm/dd
+      } else if (dobMatch[7] && dobMatch[8] && dobMatch[9]) {
+        const year = parseInt(dobMatch[9], 10) < 50 ? `20${dobMatch[9]}` : `19${dobMatch[9]}`; // Assume 1900 or 2000
+        return `${dobMatch[7]}/${dobMatch[8]}/${year}`; // dd/mm/yy
+      }
+    }
+
+    return 'Not found';
   };
 
-  return (
-    <div>
-      <h2 className='text-5xl text-center m-4 mb-8 p-2 font-bold'>Upload Document</h2>
-      
-      {/* Label wraps the entire section to make the whole div clickable */}
-      <label
-        htmlFor="fileInput"
-        className={`border-2 border-dashed border-[#4A4E69] p-4 rounded-lg m-4 w-[50%] flex flex-col justify-center align-middle mx-auto bg-slate-100 cursor-pointer ${isDragging ? 'bg-gray-300' : 'bg-white'}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <input
-          type="file"
-          onChange={handleFileChange}
-          className='hidden'
-          id="fileInput"
-        />
-        <div className='mx-auto text-[#4A4E69] text-5xl'><ion-icon name="cloud-upload"></ion-icon></div>
-        <p className="text-center text-[#4A4E69] hover:text-blue-700 mt-2">
-          {file ? file.name : 'Click to select file or drag and drop a file here'}
-        </p>
-      </label>
-      
-      <section className='flex mx-auto justify-center align-middle'>
-        <button onClick={() => handleUpload(file)} className='p-3 m-3 bg-[#22223B] text-white rounded-3xl w-[20%]'>Upload</button>
-        <button onClick={clearAll} className='p-3 m-3 bg-[#9A8C98] text-white rounded-3xl w-[20%]'>Clear</button>
-      </section>
+  const handleRemove = async (docType) => {
+    const fileRef = ref(storage, `uploads/${docType}/${documents[docType].file.name}`);
+    try {
+      await deleteObject(fileRef);
+      toast.success(`${docType.replace(/([A-Z])/g, ' $1')} removed successfully!`);
+      setDocuments((prev) => ({ ...prev, [docType]: null }));
+      setUploadedDocs((prev) => ({ ...prev, [docType]: false }));
+      setDobData((prev) => ({ ...prev, [docType]: null }));
+      setValidity((prev) => ({ ...prev, [docType]: true })); // Reset validity when document is removed
+    } catch (error) {
+      console.error('Remove failed:', error);
+      toast.error('Remove failed');
+    }
+  };
 
-      {/* Display progress bar */}
-      {progress > 0 && (
-        <div className="w-[50%] mx-auto mt-4">
-          <div className="w-full h-6 bg-gray-200 rounded-full">
-            <div
-              className="h-full bg-green-500 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
-            ></div>
+  const handleSubmit = async () => {
+    const localStorageData = loadLocalStorageData();
+    const fullName = localStorageData.Name; // Assuming fullName is stored in localStorage
+
+    // Check if all documents are valid before submitting
+    const allDocsValid = Object.keys(validity).every((docType) => validity[docType]);
+
+    if (allDocsValid) {
+      try {
+        await axios.post('http://localhost:3000/api/details/validate', { fullName });
+        toast.success('Documents validated and submitted successfully!');
+      } catch (error) {
+        console.error('Error validating documents:', error);
+        toast.error('Error validating documents. Please try again.');
+      }
+    } else {
+      toast.error('Some documents are invalid. Please correct them before submitting.');
+    }
+  };
+
+  const renderDocumentUpload = (docType, label) => {
+    const document = documents[docType];
+
+    return (
+      <div className="mb-4">
+        <div 
+          className="flex justify-between items-center cursor-pointer border-b"
+          onClick={() => setIsOpen((prev) => ({ ...prev, [docType]: !prev[docType] }))}>
+          <h2 className="text-lg font-semibold">{label}</h2>
+          <span>{isOpen[docType] ? '-' : '+'}</span>
+        </div>
+
+        {isOpen[docType] && (
+          <div className="pl-4 pt-2">
+            <label className="flex-grow">
+              <input
+                type="file"
+                onChange={(e) => handleFileChange(e, docType)}
+                style={{ display: 'none' }}
+                id={docType}
+              />
+              <div
+                onClick={() => document.getElementById(docType).click()}
+                className="border border-gray-400 p-2 rounded cursor-pointer text-center"
+              >
+                {document && document.file ? document.file.name : `Upload ${label}`}
+              </div>
+            </label>
+            <label className="ml-2">
+              <input
+                type="checkbox"
+                checked={uploadedDocs[docType]}
+                readOnly
+              />
+              <span>Uploaded</span>
+            </label>
+            {document && (
+              <div className="ml-2">
+                <button
+                  onClick={() => handleRemove(docType)}
+                  className="text-red-500 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+            {document && (
+              <div className="mt-2">
+                {!validity[docType] ? (
+                  <p className="text-red-500">Document is incorrect.</p>
+                ) : (
+                  <p className="text-green-500">Document is correct.</p>
+                )}
+              </div>
+            )}
           </div>
-          <p className="text-center mt-2">{progress}%</p>
+        )}
+      </div>
+    );
+  };
+
+  const isAllDocsUploaded = Object.values(uploadedDocs).every(Boolean);
+
+  return (
+    <div className="p-4">
+      <h1 className="text-lg font-semibold mb-4">Upload Documents</h1>
+      {renderDocumentUpload('gateScorecard', 'GATE Scorecard')}
+      {renderDocumentUpload('casteCertificate', 'Caste Certificate')}
+      {renderDocumentUpload('pwdCertificate', 'PWD Certificate')}
+      {renderDocumentUpload('ewsCertificate', 'EWS Certificate')}
+      {renderDocumentUpload('experienceLetter', 'Experience Letter')}
+
+      {progress > 0 && (
+        <div className="w-full h-4 bg-gray-200 rounded mt-2">
+          <div
+            className="h-full bg-green-500 rounded transition-all duration-500 ease-out"
+            style={{ width: `${progress}%` }}
+          ></div>
+          <p className="text-center mt-1 text-sm">{progress}%</p>
         </div>
       )}
 
-      {fileURL && (
-        <div className='flex flex-col gap-3 text-center'>
-          <p>File Uploaded Successfully!</p>
-          <button className='bg-slate-700 p-3 rounded-3xl text-white w-[30%] mx-auto hover:border-2 hover:border-[#22223B] hover:bg-[#F2E9E4] hover:text-black hover:font-bold transition-all'>
-          <a href={fileURL} target="_blank" rel="noreferrer">
-            <ion-icon name="eye" size="small"></ion-icon> View Uploaded File 
-          </a>
-          </button>
-        </div>
+      {isAllDocsUploaded && (
+        <button onClick={handleSubmit} className="mt-4 bg-blue-500 text-white p-2 rounded">Submit</button>
       )}
 
-      <ul>
-        {uploadedFiles.map((uploadedFile, index) => (
-          <li key={index}>
-            <a href={uploadedFile} target="_blank" rel="noreferrer">
-              View Uploaded File
-            </a>
-          </li>
-        ))}
-      </ul>
-
-      <ToastContainer /> {/* Toast notifications */}
+      <ToastContainer />
     </div>
   );
 };
 
-export default DocumentUpload;
+export default DocumentsComponent;

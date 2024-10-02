@@ -10,7 +10,7 @@ import OCRComponent from './components/OCRComponent';
 import RecruitmentDashboard from './pages/RecruitmentDashboard'; // Import the new component
 import UserForm from './pages/UserForm';
 import Home from './pages/Home';
-
+import Admin from './pages/Admin';
 function App() {
   return (
     <>
@@ -22,10 +22,11 @@ function App() {
           <Route path="/signin" element={<Signin />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/camera-capture" element={<CameraCapture />} />
-          <Route path="/upload" element={<DocumentUpload />} />
+          <Route path="/documents" element={<DocumentUpload />} />
           <Route path="/text-extract" element={<OCRComponent />} />
           <Route path="/recruitment-dashboard" element={<RecruitmentDashboard />} /> {/* Add the RecruitmentDashboard route */}
           <Route path="/user-form" element={<UserForm />} />
+          <Route path="/admin" element={<Admin />} /> 
         </Routes>
       </BrowserRouter>
     </>

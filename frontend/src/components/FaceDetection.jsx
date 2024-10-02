@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import * as faceapi from 'face-api.js';
 import '../styles/FaceDetection.css';
 
@@ -18,6 +19,9 @@ const FaceDetection = () => {
     const [isVideoStarted, setIsVideoStarted] = useState(false);
     const [warningMessage, setWarningMessage] = useState(null);
     const [detectedFaceDescriptor, setDetectedFaceDescriptor] = useState(null);
+    const [showDocumentUpload, setShowDocumentUpload] = useState(false);
+    
+    const navigate = useNavigate(); // Initialize useNavigate
 
     const loadModels = async () => {
         const MODEL_URL = '/models';
@@ -163,8 +167,10 @@ const FaceDetection = () => {
                 setShowProgressBar(false);
                 if (distance < threshold) {
                     setComparisonResult("The faces match!");
+                    setShowDocumentUpload(true); // Show document upload buttons if matched
                 } else {
                     setComparisonResult("The faces do not match.");
+                    setShowDocumentUpload(false); // Hide if not matched
                 }
             }, 1000); // Simulate progress duration
         } else {
@@ -194,106 +200,101 @@ const FaceDetection = () => {
 
     return (
         <div className="flex flex-col items-center w-full">
-        <section className='flex flex-row m-4 gap-6 mx-auto'>
-
-        <div>
-            <section
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                className="p-4 border-2 border-dashed border-gray-500 cursor-pointer rounded-3xl bg-slate-200"
-                onClick={triggerFileInput}
-            >
-                <input
-                    id="fileInput"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    style={{ display: 'none' }}
-                />
-                <p className='text-center text-slate-500'><ion-icon name="cloud-upload" size="large"></ion-icon></p>
-                <p className='text-center'>{uploadedImage ? "Image Uploaded" : "Drag & Drop or Click to Upload"}</p>
-            </section>
-
-            {uploadedImage && (
-                <div className="flex flex-col mt-2 items-center">
-                    <img
-                        src={uploadedImage}
-                        alt="Uploaded"
-                        className="border border-gray-300"
-                        style={{ width: '200px', height: 'auto' }}
-                    />
-                    <button
-                        onClick={compareFaces}
-                        className="mt-2 px-4 py-2 bg-[#4A4E69] text-white rounded-3xl hover:bg-[#22223B]"
-                    >
-                        Compare Faces
-                    </button>
-                </div>
-            )}
-        </div>
-
-            <div>
-
-            <div className="relative rounded-3xl border-2 border-[#22223B] overflow-hidden" style={{ width: '100%', maxWidth: '720px', height: 'auto' }}>
-                {!isVideoStarted && !detectedFaceImage && (
-                    <button
-                        onClick={startVideo}
-                        className="absolute inset-0 m-auto px-4 py-2 bg-[#4A4E69] text-white rounded-3xl hover:bg-[#22223B] transition z-50"
-                        style={{ width: 'fit-content', height: 'fit-content' }}
-                    >
-                        Start Face Detection
-                    </button>
-                )}
-                {!detectedFaceImage && (
-                    <>
-                        <video
-                            ref={videoRef}
-                            className="block w-full"
-                            style={{ height: 'auto' }}
-                            autoPlay
-                            muted
-                        />
-                        <canvas
-                            ref={canvasRef}
-                            className="absolute top-0 left-0"
-                            style={{ width: '100%', height: 'auto' }}
-                        />
-                    </>
-                )}
-                <canvas ref={faceCanvasRef} style={{ display: 'none' }} />
-            </div>
-
-            <div className="mt-4 text-center">
-                <h2 className="text-lg font-bold">{message}</h2>
-                {warningMessage && <p className="text-red-500">{warningMessage}</p>}
-            </div>
-            </div>
-           
-            {/* Flex container for video and uploaded image */}
-            <div className="flex justify-center mt-4 space-x-4">
+            <section className='flex flex-row m-4 gap-6 mx-auto'>
                 <div>
-                    {detectedFaceImage && (
-                        <div>
+                    <section
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        className="p-4 border-2 border-dashed border-gray-500 cursor-pointer rounded-3xl bg-slate-200"
+                        onClick={triggerFileInput}
+                    >
+                        <input
+                            id="fileInput"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            style={{ display: 'none' }}
+                        />
+                        <p className='text-center text-slate-500'><ion-icon name="cloud-upload" size="large"></ion-icon></p>
+                        <p className='text-center'>{uploadedImage ? "Image Uploaded" : "Drag & Drop or Click to Upload"}</p>
+                    </section>
+
+                    {uploadedImage && (
+                        <div className="flex flex-col mt-2 items-center">
                             <img
-                                src={detectedFaceImage}
-                                alt="Detected Face"
+                                src={uploadedImage}
+                                alt="Uploaded"
                                 className="border border-gray-300"
                                 style={{ width: '200px', height: 'auto' }}
                             />
                             <button
-                                onClick={captureDetectedFace}
-                                className="mt-2 px-4 py-2 bg-[#4A4E69] text-white rounded hover:bg-[#22223B]"
+                                onClick={compareFaces}
+                                className="mt-2 px-4 py-2 bg-[#4A4E69] text-white rounded-3xl hover:bg-[#22223B]"
                             >
-                                Capture Detected Face
+                                Compare Faces
                             </button>
                         </div>
                     )}
                 </div>
 
-                
-            </div>
+                <div>
+                    <div className="relative rounded-3xl border-2 border-[#22223B] overflow-hidden" style={{ width: '100%', maxWidth: '720px', height: 'auto' }}>
+                        {!isVideoStarted && !detectedFaceImage && (
+                            <button
+                                onClick={startVideo}
+                                className="absolute inset-0 m-auto px-4 py-2 bg-[#4A4E69] text-white rounded-3xl hover:bg-[#22223B] transition z-50"
+                                style={{ width: 'fit-content', height: 'fit-content' }}
+                            >
+                                Start Face Detection
+                            </button>
+                        )}
+                        {!detectedFaceImage && (
+                            <>
+                                <video
+                                    ref={videoRef}
+                                    className="block w-full"
+                                    style={{ height: 'auto' }}
+                                    autoPlay
+                                    muted
+                                />
+                                <canvas
+                                    ref={canvasRef}
+                                    className="absolute top-0 left-0"
+                                    style={{ width: '100%', height: 'auto' }}
+                                />
+                            </>
+                        )}
+                        <canvas ref={faceCanvasRef} style={{ display: 'none' }} />
+                    </div>
+
+                    <div className="mt-4 text-center">
+                        <h2 className="text-lg font-bold">{message}</h2>
+                        {warningMessage && <p className="text-red-500">{warningMessage}</p>}
+                    </div>
+                </div>
+
+                <div className="flex justify-center mt-4 space-x-4">
+                    <div>
+                        {detectedFaceImage && (
+                            <div>
+                                <img
+                                    src={detectedFaceImage}
+                                    alt="Detected Face"
+                                    className="border border-gray-300"
+                                    style={{ width: '200px', height: 'auto' }}
+                                />
+                                <button
+                                    onClick={captureDetectedFace}
+                                    className="mt-2 px-4 py-2 bg-[#4A4E69] text-white rounded hover:bg-[#22223B]"
+                                >
+                                    Capture Detected Face
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </section>
-            {/* New row for progress bar and comparison results */}
+
             <div className="mt-4 w-full text-center">
                 {showProgressBar && (
                     <div className="mt-4 w-full">
@@ -309,8 +310,20 @@ const FaceDetection = () => {
                 )}
 
                 {comparisonResult && (
-                    <div className="mt-4 text-lg">
+                    <div className="mt-4 text-lg p-3 bg-[#C9ADA7] w-[60%] text-center mx-auto rounded-3xl">
                         {comparisonResult}
+                    </div>
+                )}
+
+                {showDocumentUpload && comparisonResult === "The faces match!" && (
+                    <div className="mt-4 m-4">
+                        <h3 className="text-lg font-bold">Upload Further Documents</h3>
+                        <button
+                            className="mt-2 px-4 py-2 bg-[#4A4E69] text-white rounded hover:bg-[#22223B] rounded-3xl"
+                            onClick={() => navigate('/documents')} // Navigate to /documents
+                        >
+                            Upload Documents
+                        </button>
                     </div>
                 )}
             </div>
