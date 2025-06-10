@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="https://img.icons8.com/external-flatart-icons-outline-flatarticons/64/document-verification.png" width="70" />
   <h1>DocuLens – Automatic Document Verification</h1>
   <p><strong>Smart, Fast, and Secure Identity & Document Verification</strong></p>
 </div>
