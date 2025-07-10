@@ -21,7 +21,7 @@ https://github.com/user-attachments/assets/0be9f7f5-9d3f-4191-b9fb-1951cb55b734
 - **Document Upload & Text Extraction**  
   Extract text automatically from uploaded documents for verification.
 
-- **Face Matching with Microsoft Face API**  
+- **Face Matching**  
   Validate user identity through facial recognition matching with Aadhar data.
 
 - **Admin Dashboard**  
@@ -40,10 +40,8 @@ https://github.com/user-attachments/assets/0be9f7f5-9d3f-4191-b9fb-1951cb55b734
 | Layer       | Technology           |
 |-------------|-----------------------|
 | Frontend    | React.js              |
-| Backend     | Node.js, Express.js   |
+| Backend     | Node.js, Express.js, OpenCV, Multer  |
 | Database    | MongoDB               |
-| APIs Used   | Microsoft Face API    |
-
 ---
 
 ## ⚙️ Installation Guide
@@ -75,7 +73,6 @@ To run the project locally:
    Create a `.env` file in the root directory with:
 
    ```env
-   FACE_API_KEY=your_azure_face_api_key
    MONGO_URI=your_mongodb_connection_string
    PORT=5000
    ```
