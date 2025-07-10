@@ -52,8 +52,7 @@ To run the project locally:
 
 - Node.js (v14 or higher)
 - MongoDB (local or MongoDB Atlas)
-- Microsoft Azure Face API key
-
+  
 ### 📦 Steps
 
 1. **Clone the repository:**
